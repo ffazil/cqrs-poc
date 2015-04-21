@@ -8,10 +8,14 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.context.request.async.DeferredResult;
+import reactor.core.Reactor;
 
+import java.beans.Introspector;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
@@ -20,26 +24,32 @@ import java.util.Arrays;
  */
 @Aspect
 @Component
-public class CommandPublisher {
-	private static Logger log = LoggerFactory.getLogger(CommandPublisher.class);
+public class PublishCommandAdvisor {
+	private static Logger log = LoggerFactory.getLogger(PublishCommandAdvisor.class);
 
+	@Autowired
+	private Reactor commandBus;
+
+	//Fetch command and formulate command name, use reactor and publish
 	@Around(value = "@annotation(com.tracebucket.x.cqrs.annotation.PublishCommand) && !within(com.tracebucket.x.cqrs.annotation.PublishCommand)")
 	public Object publish(ProceedingJoinPoint joinPoint) throws Throwable {
 		MethodSignature ms = (MethodSignature) joinPoint.getSignature();
 		Method m = ms.getMethod();
 		Object[] arguments = joinPoint.getArgs();
 
-		CommandWrapper commandWrapper = (CommandWrapper) Arrays.asList(arguments).stream()
-				.filter(a -> a instanceof CommandWrapper)
-				.findFirst()
-				.get();
 
-		Command command = commandWrapper.getCommand();
-		DeferredResult deferredResult = commandWrapper.getDeferredResult();
-
-		PublishCommand annotation = AnnotationUtils.getAnnotation(m, PublishCommand.class);
+		PublishCommand publishCommandAnnotation = AnnotationUtils.getAnnotation(m, PublishCommand.class);
+		RequestMapping requestMappingAnnotation = AnnotationUtils.getAnnotation(m, RequestMapping.class);
 
 		Object result = joinPoint.proceed();
+
+		String commandName = null;
+		commandName = publishCommandAnnotation.command();
+
+
+
+
+
 		return result;
 
 
